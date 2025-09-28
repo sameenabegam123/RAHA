@@ -288,98 +288,121 @@ document.addEventListener('DOMContentLoaded', function () {
         pageSectionObserver.observe(section);
     });
 
-    // Enhanced video optimization with consistent 1.5x speed
+    // Enhanced video optimization with smooth playback
     function optimizeVideos() {
         const videos = document.querySelectorAll('video');
+        const backgroundVideo = document.querySelector('.video-background');
+        const heroVideos = document.querySelectorAll('.hero-video');
+        const footerVideo = document.querySelector('.footer-video');
 
-        videos.forEach(video => {
-            // Set preload for all videos
-            video.preload = 'auto';
+        // Set up background video - highest priority
+        if (backgroundVideo) {
+            // Ensure background video is always playing
+            backgroundVideo.play().catch(error => {
+                console.log('Background video play failed:', error);
+                // Retry after user interaction
+                document.addEventListener('click', function enableBgVideo() {
+                    backgroundVideo.play().catch(e => console.log('Background video retry failed:', e));
+                    document.removeEventListener('click', enableBgVideo);
+                }, { once: true });
+            });
 
+            // Ensure background video never gets paused
+            backgroundVideo.addEventListener('pause', function () {
+                if (backgroundVideo !== document.activeElement) {
+                    backgroundVideo.play().catch(e => console.log('Background video restart failed:', e));
+                }
+            });
+        }
+
+        // Set up hero videos
+        heroVideos.forEach(heroVideo => {
             // Only play when visible
-            const observer = new IntersectionObserver((entries) => {
+            const videoObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
-                        // Load video if not ready
-                        if (video.readyState < 3) {
-                            video.load();
-                        }
-
-                        // Play the video
-                        video.play().catch(e => {
-                            console.log('Video autoplay prevented:', e);
+                        // Play hero video when visible
+                        heroVideo.play().catch(error => {
+                            console.log('Hero video play failed:', error);
+                            // Retry after user interaction
+                            document.addEventListener('click', function enableHeroVideo() {
+                                heroVideo.play().catch(e => console.log('Hero video retry failed:', e));
+                                document.removeEventListener('click', enableHeroVideo);
+                            }, { once: true });
                         });
-
-                        // Set playback rate to 1.5x for all videos after a short delay
-                        setTimeout(() => {
-                            try {
-                                video.playbackRate = 1.5;
-                            } catch (e) {
-                                console.log('Error setting playback rate:', e);
-                            }
-                        }, 200);
-
-                        observer.unobserve(entry.target);
+                    } else {
+                        // Pause when not visible
+                        heroVideo.pause();
                     }
                 });
-            }, { threshold: 0.1 });
+            }, { threshold: 0.3 });
 
-            observer.observe(video);
+            videoObserver.observe(heroVideo);
 
             // Handle video errors with retry
             let retryCount = 0;
-            const maxRetries = 3;
+            const maxRetries = 2;
 
-            video.addEventListener('error', function () {
-                console.log('Video error:', video.src);
+            heroVideo.addEventListener('error', function () {
+                console.log('Hero video error:', heroVideo.src);
                 if (retryCount < maxRetries) {
                     retryCount++;
                     setTimeout(() => {
-                        video.load();
-                        video.play().catch(e => console.log('Retry failed:', e));
+                        heroVideo.load();
+                        if (heroVideo.parentElement.parentElement.classList.contains('active')) {
+                            heroVideo.play().catch(e => console.log('Hero video retry failed:', e));
+                        }
                     }, 1000 * retryCount);
                 }
             });
 
-            // Ensure smooth looping with maintained playback rate
-            video.addEventListener('ended', function () {
+            // Ensure smooth looping
+            heroVideo.addEventListener('ended', function () {
                 this.currentTime = 0;
-                this.play().catch(e => console.log('Video loop error:', e));
+                this.play().catch(e => console.log('Hero video loop failed:', e));
+            });
+        });
 
-                // Re-apply playback rate after loop
-                setTimeout(() => {
-                    try {
-                        this.playbackRate = 1.5;
-                    } catch (e) {
-                        console.log('Error re-applying playback rate:', e);
+        // Set up footer video
+        if (footerVideo) {
+            const footerObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        footerVideo.play().catch(error => {
+                            console.log('Footer video play failed:', error);
+                            // Retry after user interaction
+                            document.addEventListener('click', function enableFooterVideo() {
+                                footerVideo.play().catch(e => console.log('Footer video retry failed:', e));
+                                document.removeEventListener('click', enableFooterVideo);
+                            }, { once: true });
+                        });
+                    } else {
+                        footerVideo.pause();
                     }
-                }, 100);
+                });
+            }, { threshold: 0.3 });
+
+            footerObserver.observe(footerVideo);
+
+            // Ensure smooth looping
+            footerVideo.addEventListener('ended', function () {
+                this.currentTime = 0;
+                this.play().catch(e => console.log('Footer video loop failed:', e));
+            });
+        }
+
+        // General video optimizations
+        videos.forEach(video => {
+            // Set preload for all videos
+            video.preload = 'metadata';
+
+            // Add buffering indicators
+            video.addEventListener('waiting', function () {
+                console.log('Video buffering:', video.src);
             });
 
-            // Ensure playback rate is maintained when video is played
-            video.addEventListener('play', function () {
-                setTimeout(() => {
-                    try {
-                        this.playbackRate = 1.5;
-                    } catch (e) {
-                        console.log('Error maintaining playback rate:', e);
-                    }
-                }, 50);
-            });
-
-            // Handle rate change errors
-            video.addEventListener('ratechange', function () {
-                if (this.playbackRate !== 1.5) {
-                    console.warn('Playback rate changed from 1.5x to', this.playbackRate);
-                    // Try to reset it back to 1.5x
-                    setTimeout(() => {
-                        try {
-                            this.playbackRate = 1.5;
-                        } catch (e) {
-                            console.log('Error resetting playback rate:', e);
-                        }
-                    }, 100);
-                }
+            video.addEventListener('canplay', function () {
+                console.log('Video can play:', video.src);
             });
         });
     }
@@ -387,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize video optimization with a delay to ensure DOM is ready
     setTimeout(() => {
         optimizeVideos();
-    }, 500);
+    }, 1000);
 
     // Split Screen Loader - Centered for all devices with reduced timing
     const splitLoader = document.getElementById('splitLoader');
@@ -430,4 +453,4 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 150); // Further reduced delay
         }
     }, 50); // Much faster interval for quickest loading
-});
+}); 
