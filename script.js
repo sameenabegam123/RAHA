@@ -363,20 +363,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }, 50); // Much faster interval for quickest loading
 
-    // Mobile header hide/show on scroll
+    // Mobile header hide/show on scroll with improved performance
     let lastScrollTop = 0;
-    const header = document.getElementById('mainHeader');
     let scrollTimeout;
+    const header = document.getElementById('mainHeader');
+    let ticking = false;
 
-    // Function to handle scroll behavior
-    function handleScroll() {
+    function updateHeader() {
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-
+        
         // Only apply this behavior on mobile devices
         if (window.innerWidth <= 768) {
             // Clear any existing timeout
             clearTimeout(scrollTimeout);
-
+            
             // If scrolling down and past the header height
             if (scrollTop > lastScrollTop && scrollTop > header.offsetHeight) {
                 // Scrolling down - hide header
@@ -385,22 +385,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Scrolling up - show header
                 header.classList.remove('header-hidden');
             }
-
+            
             // Set a timeout to ensure header stays visible when user stops scrolling
-            scrollTimeout = setTimeout(function () {
+            scrollTimeout = setTimeout(function() {
                 header.classList.remove('header-hidden');
-            }, 3000);
+            }, 1500); // Reduced timeout for quicker response
         }
-
+        
         // Update last scroll position
         lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+        ticking = false;
     }
 
-    // Add scroll event listener
-    window.addEventListener('scroll', handleScroll);
+    function requestTick() {
+        if (!ticking) {
+            window.requestAnimationFrame(updateHeader);
+            ticking = true;
+        }
+    }
+
+    // Add scroll event listener with requestAnimationFrame for smoother performance
+    window.addEventListener('scroll', requestTick);
 
     // Add resize event listener to handle orientation changes
-    window.addEventListener('resize', function () {
+    window.addEventListener('resize', function() {
         // If switching to desktop view, ensure header is visible
         if (window.innerWidth > 768) {
             header.classList.remove('header-hidden');
